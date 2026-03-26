@@ -25,7 +25,8 @@ import {
   Youtube,
   FileText,
   Link as LinkIcon,
-  Sparkles
+  Sparkles,
+  Brain
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
@@ -78,8 +79,9 @@ export function EnhancedTaskCenter({ selectedSkill, allSkills, onTaskComplete }:
   const [taskProgress, setTaskProgress] = useState<Record<string, number>>({});
   const [difficultyFilter, setDifficultyFilter] = useState<'all' | 'easy' | 'medium' | 'hard'>('all');
   const [expandedResources, setExpandedResources] = useState<string[]>([]);
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  const allTasks: Task[] = [
+  const [allTasks, setAllTasks] = useState<Task[]>([
     {
       id: 'task-algo-1',
       title: '算法基础训练',
@@ -313,7 +315,7 @@ export function EnhancedTaskCenter({ selectedSkill, allSkills, onTaskComplete }:
         },
       ],
     },
-  ];
+  ]);
 
   const tasksWithLevels = allTasks.map(task => ({
     ...task,
@@ -434,6 +436,55 @@ export function EnhancedTaskCenter({ selectedSkill, allSkills, onTaskComplete }:
     );
 
     onTaskComplete?.(taskId, task.rewards);
+  };
+
+  const generateAITask = () => {
+    setIsGenerating(true);
+    toast.loading('AI正在分析你的技能数据生成定制任务...', { id: 'ai-gen' });
+
+    setTimeout(() => {
+      const targetSkill = selectedSkill || allSkills[Math.floor(Math.random() * allSkills.length)] || { id: 'custom', name: '综合开发', currentLevel: 1 };
+      
+      const difficultyOpts: ('easy' | 'medium' | 'hard')[] = ['easy', 'medium', 'hard'];
+      const randomDifficulty = difficultyOpts[Math.floor(Math.random() * difficultyOpts.length)];
+      
+      const newTask: Task = {
+        id: `ai-task-${Date.now()}`,
+        title: `[AI定制] ${targetSkill.name} 实战挑战`,
+        description: `基于你当前的技能图谱，AI为你自动生成了这个专属任务，旨在强化你的${targetSkill.name}运用能力。`,
+        requiredSkills: [
+          { skillId: targetSkill.id, skillName: targetSkill.name, minLevel: Math.max(1, targetSkill.currentLevel - 1) }
+        ],
+        rewards: {
+          xp: randomDifficulty === 'hard' ? 800 : randomDifficulty === 'medium' ? 500 : 300,
+          skillPoints: randomDifficulty === 'hard' ? 5 : randomDifficulty === 'medium' ? 3 : 2,
+          targetSkillId: targetSkill.id,
+          targetSkillName: targetSkill.name,
+        },
+        difficulty: randomDifficulty,
+        category: (targetSkill as any).category || '综合突破',
+        estimatedTime: randomDifficulty === 'hard' ? '5-7天' : randomDifficulty === 'medium' ? '3-5天' : '1-2天',
+        steps: [
+          `深入研究${targetSkill.name}的进阶特性`,
+          '设计并实现一个相关的实战Demo',
+          '优化代码结构和性能',
+          '编写技术总结博客',
+        ],
+        icon: <Brain className="w-5 h-5 text-purple-200" />,
+        resources: [
+          {
+            title: `${targetSkill.name} 最佳实践指南`,
+            url: '#',
+            type: 'article',
+            icon: <FileText className="w-4 h-4" />
+          }
+        ]
+      };
+
+      setAllTasks(prev => [newTask, ...prev]);
+      setIsGenerating(false);
+      toast.success(`成功生成AI定制任务：${newTask.title}`, { id: 'ai-gen', icon: '✨' });
+    }, 2000);
   };
 
   const renderTask = (task: Task) => {
@@ -681,13 +732,22 @@ export function EnhancedTaskCenter({ selectedSkill, allSkills, onTaskComplete }:
                     当前查看: {selectedSkill.name} 相关任务
                   </Badge>
                 )}
-                <div className="flex gap-4 mt-4 text-sm">
+                <div className="flex flex-wrap items-center gap-4 mt-4 text-sm">
                   <span className="text-gray-400">
                     进行中: <span className="text-purple-400 font-bold">{activeTasks.length}</span>
                   </span>
                   <span className="text-gray-400">
                     已完成: <span className="text-green-400 font-bold">{completedTasks.length}</span>
                   </span>
+                  <Button 
+                    onClick={generateAITask} 
+                    disabled={isGenerating}
+                    size="sm"
+                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-indigo-500/20 ml-2"
+                  >
+                    <Sparkles className={`w-4 h-4 mr-2 ${isGenerating ? 'animate-pulse' : ''}`} />
+                    {isGenerating ? 'AI分析中...' : 'AI智能生成专属任务'}
+                  </Button>
                 </div>
               </div>
             </div>
